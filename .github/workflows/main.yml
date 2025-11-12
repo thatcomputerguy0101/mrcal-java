@@ -88,7 +88,7 @@ jobs:
     - run: git describe --tags
     - uses: pguyot/arm-runner-action@v2
       with:
-        base_image: https://github.com/PhotonVision/photon-image-modifier/releases/download/$IMAGE_VERSION/photonvision_raspi.img.xz
+        base_image: https://github.com/thatcomputerguy0101/photon-image-modifier/actions/runs/19313633692/artifacts/4549412740
         cpu: cortex-a7
         image_additional_mb: 5000
         bind_mount_repository: true
