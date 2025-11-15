@@ -79,9 +79,17 @@ jobs:
       with:
         submodules: 'true'
         fetch-depth: 0
+
+    - uses: actions/download-artifact@v5
+      with:
+        name: photonvision_raspi.img.xz
+        github-token: ${{ secrets.GH_PAT }}
+        repository: thatcomputerguy0101/photon-image-modifier
+        run-id: 6
+
     - uses: pguyot/arm-runner-action@v2
       with:
-        base_image: https://github.com/thatcomputerguy0101/photon-image-modifier/actions/runs/19313633692/artifacts/4549412740
+        base_image: photonvision_raspi.img.xz
         cpu: cortex-a7
         image_additional_mb: 5000
         bind_mount_repository: true
