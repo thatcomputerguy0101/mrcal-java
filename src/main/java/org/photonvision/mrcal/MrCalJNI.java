@@ -40,7 +40,10 @@ public class MrCalJNI {
      *
      * @param corners The positions of each of the detected corners
      * @param levels The decimation level each of the corners was observed at
-     * @param ids The id of each corner, if the observation was a partial observation; can be null
+     * @param ids The id of each corner, if the observation was a partial observation; can be null.
+     *     Ids start at zero in the top left corner of the physical board (ignoring rotation) and
+     *     should increase in reading order. Corners may be provided in any order as long as they are
+     *     paired with the correct id for their physical position on the board.
      */
     public static record MrCalObservation(Point[] corners, float[] levels, int[] ids) {
         /**
