@@ -300,7 +300,7 @@ public class MrCalJNI {
 
             if (ids == null) {
                 // No ids, assume a full rectangular board
-                if (!(corners.length == levels.length && corners.length <= boardWidth * boardHeight)) {
+                if (!(corners.length == levels.length && corners.length == boardWidth * boardHeight)) {
                     return null;
                 }
 
