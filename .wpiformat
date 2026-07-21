@@ -2,6 +2,11 @@ cppHeaderFileInclude {
   \.h$
 }
 
+licenseUpdateExclude {
+  mrcal_wrapper.h
+  mrcal_wrapper.cpp
+}
+
 modifiableFileExclude {
   mrcal/
   libdogleg/
