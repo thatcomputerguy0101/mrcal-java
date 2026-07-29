@@ -57,6 +57,8 @@ public class MrCalJNI {
         }
     }
 
+    protected static record ObservationInfo(double[] data, int[][] ids) {}
+
     public static class MrCalResult {
         public boolean success;
         public double[] intrinsics;
@@ -278,12 +280,13 @@ public class MrCalJNI {
      * present. Levels will be converted to weights using weight = 0.5^level, as explained
      * [here](https://github.com/dkogan/mrcal/blob/7cd9ac4c854a4b244a35f554c9ebd0464d59e9ff/mrcal-calibrate-cameras#L152)
      */
-    private static double[] makeObservations(
+    private static ObservationInfo makeObservations(
             int observationCount,
             Iterator<MrCalObservation> observationData,
             int boardWidth,
             int boardHeight) {
         double[] observations = new double[boardWidth * boardHeight * 3 * observationCount];
+        int[][] all_ids = new int[observationCount][];
         Arrays.fill(observations, -1.0);
 
         for (int b = 0; b < observationCount; b++) {
@@ -297,6 +300,7 @@ public class MrCalJNI {
             final var corners = observation.corners;
             final var levels = observation.levels;
             final var ids = observation.ids;
+            all_ids[b] = ids;
 
             if (ids == null) {
                 // No ids, assume a full rectangular board
@@ -347,7 +351,7 @@ public class MrCalJNI {
             return null;
         }
 
-        return observations;
+        return new ObservationInfo(observations, all_ids);
     }
 
     /**
@@ -380,7 +384,28 @@ public class MrCalJNI {
 
         var observations = makeObservations(observationCount, observationData, boardWidth, boardHeight);
 
-        return mrcal_calibrate_camera(
-                observations, boardWidth, boardHeight, boardSpacing, imageWidth, imageHeight, focalLen);
+        var results =
+                mrcal_calibrate_camera(
+                        observations.data,
+                        boardWidth,
+                        boardHeight,
+                        boardSpacing,
+                        imageWidth,
+                        imageHeight,
+                        focalLen);
+
+        // Only return corners used for the corners that were provided in the input
+        for (int b = 0; b < observations.ids.length; b++) {
+            if (observations.ids[b] != null) {
+                boolean[] fullCorners = results.cornersUsed.get(b);
+                boolean[] partialCorners = new boolean[observations.ids[b].length];
+                for (int i = 0; i < observations.ids[b].length; i++) {
+                    partialCorners[i] = fullCorners[observations.ids[b][i]];
+                }
+                results.cornersUsed.set(b, partialCorners);
+            }
+        }
+
+        return results;
     }
 }
