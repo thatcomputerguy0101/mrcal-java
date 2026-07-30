@@ -19,7 +19,6 @@ package org.photonvision.mrcal;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Iterator;
 import java.util.List;
 import org.opencv.core.Point;
 import org.wpilib.math.geometry.Pose3d;
@@ -281,21 +280,13 @@ public class MrCalJNI {
      * [here](https://github.com/dkogan/mrcal/blob/7cd9ac4c854a4b244a35f554c9ebd0464d59e9ff/mrcal-calibrate-cameras#L152)
      */
     private static ObservationInfo makeObservations(
-            int observationCount,
-            Iterator<MrCalObservation> observationData,
-            int boardWidth,
-            int boardHeight) {
-        double[] observations = new double[boardWidth * boardHeight * 3 * observationCount];
-        int[][] all_ids = new int[observationCount][];
-        Arrays.fill(observations, -1.0);
+            List<MrCalObservation> observations, int boardWidth, int boardHeight) {
+        double[] packedObservations = new double[boardWidth * boardHeight * 3 * observations.size()];
+        int[][] all_ids = new int[observations.size()][];
+        Arrays.fill(packedObservations, -1.0);
 
-        for (int b = 0; b < observationCount; b++) {
-            if (!observationData.hasNext()) {
-                // Too few observations
-                return null;
-            }
-
-            final var observation = observationData.next();
+        for (int b = 0; b < observations.size(); b++) {
+            final var observation = observations.get(b);
 
             final var corners = observation.corners;
             final var levels = observation.levels;
@@ -315,9 +306,9 @@ public class MrCalJNI {
 
                     int i = boardWidth * boardHeight * b + c;
 
-                    observations[i * 3 + 0] = corner.x;
-                    observations[i * 3 + 1] = corner.y;
-                    observations[i * 3 + 2] = level;
+                    packedObservations[i * 3 + 0] = corner.x;
+                    packedObservations[i * 3 + 1] = corner.y;
+                    packedObservations[i * 3 + 2] = level;
                 }
             } else {
                 // Ids present, some corners may be missing
@@ -339,19 +330,14 @@ public class MrCalJNI {
 
                     int i = boardWidth * boardHeight * b + id;
 
-                    observations[i * 3 + 0] = corner.x;
-                    observations[i * 3 + 1] = corner.y;
-                    observations[i * 3 + 2] = level;
+                    packedObservations[i * 3 + 0] = corner.x;
+                    packedObservations[i * 3 + 1] = corner.y;
+                    packedObservations[i * 3 + 2] = level;
                 }
             }
         }
 
-        if (observationData.hasNext()) {
-            // Too many observations
-            return null;
-        }
-
-        return new ObservationInfo(observations, all_ids);
+        return new ObservationInfo(packedObservations, all_ids);
     }
 
     /**
@@ -361,8 +347,7 @@ public class MrCalJNI {
      * then calls {@link #mrcal_calibrate_camera} to perform calibration. Each corner's detection
      * level is converted to a weight (0.5^level), and negative levels indicate undetected corners.
      *
-     * @param observationCount Number of observations in `observationData`
-     * @param observationData An iterator of observations, each containing a list of corner locations,
+     * @param observations An list of observations, each containing a list of corner locations,
      *     decimation levels, and optional corner ids
      * @param boardWidth Number of internal corners horizontally
      * @param boardHeight Number of internal corners vertically
@@ -373,8 +358,7 @@ public class MrCalJNI {
      * @return Calibration result with optimized intrinsics, poses, and error metrics
      */
     public static MrCalResult calibrateCamera(
-            int observationCount,
-            Iterator<MrCalObservation> observationData,
+            List<MrCalObservation> observations,
             int boardWidth,
             int boardHeight,
             double boardSpacing,
@@ -382,11 +366,11 @@ public class MrCalJNI {
             int imageHeight,
             double focalLen) {
 
-        var observations = makeObservations(observationCount, observationData, boardWidth, boardHeight);
+        var packedObservations = makeObservations(observations, boardWidth, boardHeight);
 
         var results =
                 mrcal_calibrate_camera(
-                        observations.data,
+                        packedObservations.data,
                         boardWidth,
                         boardHeight,
                         boardSpacing,
@@ -395,12 +379,12 @@ public class MrCalJNI {
                         focalLen);
 
         // Only return corners used for the corners that were provided in the input
-        for (int b = 0; b < observations.ids.length; b++) {
-            if (observations.ids[b] != null) {
+        for (int b = 0; b < packedObservations.ids.length; b++) {
+            if (packedObservations.ids[b] != null) {
                 boolean[] fullCorners = results.cornersUsed.get(b);
-                boolean[] partialCorners = new boolean[observations.ids[b].length];
-                for (int i = 0; i < observations.ids[b].length; i++) {
-                    partialCorners[i] = fullCorners[observations.ids[b][i]];
+                boolean[] partialCorners = new boolean[packedObservations.ids[b].length];
+                for (int i = 0; i < packedObservations.ids[b].length; i++) {
+                    partialCorners[i] = fullCorners[packedObservations.ids[b][i]];
                 }
                 results.cornersUsed.set(b, partialCorners);
             }
