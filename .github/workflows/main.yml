@@ -63,7 +63,31 @@ jobs:
 
     - name: Build shared mrcal_jni
       # Build your program with the given configuration
-      run: cmake --build ${{github.workspace}}/cmake_build --target mrcal_jni
+      shell: bash
+      run: cmake --build "${{ github.workspace }}/cmake_build" --target mrcal_jni
+
+    - name: Build mrcal_jni_test
+      if: runner.os != 'Windows'
+      shell: bash
+      run: cmake --build "${{ github.workspace }}/cmake_build" --target mrcal_jni_test
+
+    - name: Run mrcal_jni_test
+      if: runner.os != 'Windows'
+      shell: bash
+      # On arm64, run under QEMU to catch illegal instructions
+      run: |
+        if [[ "${{ matrix.arch-name }}" == "linuxarm64" ]]; then
+          sudo apt-get update
+          sudo apt-get install -y qemu-user gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+          chmod +x "${{ github.workspace }}/cmake_build/bin/mrcal_jni_test"
+          qemu-aarch64 \
+            -cpu cortex-a55 \
+            -L /usr/aarch64-linux-gnu \
+            -E LD_LIBRARY_PATH="${{ github.workspace }}/cmake_build/lib" \
+            "${{ github.workspace }}/cmake_build/bin/mrcal_jni_test"
+        else
+          "${{ github.workspace }}/cmake_build/bin/mrcal_jni_test"
+        fi
 
     - name: Gradle build
       # Build your program with the given configuration
