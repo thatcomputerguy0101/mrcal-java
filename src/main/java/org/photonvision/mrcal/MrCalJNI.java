@@ -271,10 +271,11 @@ public class MrCalJNI {
             double warpY);
 
     /**
-     * Convert an iterator of board-pixel-corners, detection decimation levels, and corner IDs for
-     * each snapshot of a chessboard boardWidth x boardHeight to a packed double[] suitable to pass to
-     * MrCalJni::mrcal_calibrate_camera. Ids will be used to select which corners are actually
-     * present. Levels will be converted to weights using weight = 0.5^level, as explained
+     * Convert a list of board-pixel-corners, detection decimation levels, and corner IDs for each
+     * snapshot of a chessboard boardWidth x boardHeight to a packed double[] suitable to pass to
+     * MrCalJni::mrcal_calibrate_camera. Ids are used to determine which corners are actually present
+     * and so the returned usage info matches the caller's input. Levels will be converted to weights
+     * using weight = 0.5^level, as explained
      * [here](https://github.com/dkogan/mrcal/blob/7cd9ac4c854a4b244a35f554c9ebd0464d59e9ff/mrcal-calibrate-cameras#L152)
      */
     private static double[] makeObservations(
@@ -343,8 +344,13 @@ public class MrCalJNI {
      * then calls {@link #mrcal_calibrate_camera} to perform calibration. Each corner's detection
      * level is converted to a weight (0.5^level), and negative levels indicate undetected corners.
      *
+     * <p>When observations include corner IDs, the returned corner-usage mask is remapped back to the
+     * same subset and order that was provided by the caller.
+     *
      * @param observations An list of observations, each containing a list of corner locations,
-     *     decimation levels, and optional corner ids
+     *     decimation levels, and optional corner ids. If ids is null, the observation is treated as a
+     *     full board. If ids is present, only the listed corners are used; each id must be within the
+     *     board bounds and non-negative.
      * @param boardWidth Number of internal corners horizontally
      * @param boardHeight Number of internal corners vertically
      * @param boardSpacing Physical spacing between corners (meters)
